@@ -7,7 +7,6 @@ import { Header } from './components/Header';
 import { GameSelector } from './components/GameSelector';
 import { PredictionCard } from './components/PredictionCard';
 import { HistoryTable } from './components/HistoryTable';
-import { VipPopup } from './components/VipPopup';
 import { DataTunnelModal } from './components/DataTunnelModal';
 import { WingoGateModal } from './components/WingoGateModal';
 import { BottomNavBar, TabType } from './components/BottomNavBar';
@@ -31,7 +30,6 @@ export default function App() {
   const [isOnline, setIsOnline] = useState<boolean>(true);
   const [latencyMs, setLatencyMs] = useState<number>(36);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
-  const [showVip, setShowVip] = useState<boolean>(false);
   const [showInspector, setShowInspector] = useState<boolean>(false);
   const [customUrl, setCustomUrl] = useState<string>('');
 
@@ -139,11 +137,6 @@ export default function App() {
               setWinCount(newWins);
               setCurrentLevel(0);
               soundManager.playWin();
-
-              // Trigger VIP celebration popup on 5 consecutive wins
-              if (newWins >= 5) {
-                setShowVip(true);
-              }
             } else {
               setWinCount(0);
               setCurrentLevel((prev) => (prev + 1) % BET_LEVELS.length);
@@ -404,13 +397,6 @@ export default function App() {
         isOpen={!hasChosenGame}
         selectedGame={selectedGame}
         onConfirmSelection={handleConfirmInitialWingo}
-      />
-
-      {/* VIP 5-Win Streak Celebration Popup */}
-      <VipPopup
-        isOpen={showVip}
-        onClose={() => setShowVip(false)}
-        winCount={winCount}
       />
 
       {/* Data Tunnel Modal */}
