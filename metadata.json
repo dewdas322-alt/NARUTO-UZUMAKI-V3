@@ -1,0 +1,6 @@
+{
+  "name": "NARUTO UZUMAKI V2",
+  "description": "NARUTO UZUMAKI V2 - Real-Time Live API Connected Color Prediction & Market Intel for WinGo, TRX, and K3 with 5-Engine AI Fusion.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

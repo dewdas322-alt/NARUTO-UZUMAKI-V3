@@ -1,0 +1,125 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    background-color: #08090e;
+    color: #e2e8f0;
+    font-family: 'Rajdhani', sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+}
+
+.font-orbitron {
+  font-family: 'Orbitron', monospace, sans-serif;
+}
+
+.font-rajdhani {
+  font-family: 'Rajdhani', sans-serif;
+}
+
+.font-mono-code {
+  font-family: 'Fira Code', monospace;
+}
+
+/* Glow effects */
+.glow-orange {
+  box-shadow: 0 0 20px rgba(255, 107, 0, 0.4), inset 0 0 10px rgba(255, 107, 0, 0.2);
+}
+
+.glow-cyan {
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.4), inset 0 0 10px rgba(0, 229, 255, 0.2);
+}
+
+.glow-green {
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.4);
+}
+
+.glow-red {
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+}
+
+.text-glow-orange {
+  text-shadow: 0 0 12px rgba(255, 107, 0, 0.8), 0 0 24px rgba(255, 107, 0, 0.4);
+}
+
+.text-glow-green {
+  text-shadow: 0 0 12px rgba(34, 197, 94, 0.8), 0 0 24px rgba(34, 197, 94, 0.4);
+}
+
+.text-glow-red {
+  text-shadow: 0 0 12px rgba(239, 68, 68, 0.8), 0 0 24px rgba(239, 68, 68, 0.4);
+}
+
+.text-glow-cyan {
+  text-shadow: 0 0 12px rgba(0, 229, 255, 0.8), 0 0 24px rgba(0, 229, 255, 0.4);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: #090a0f;
+}
+::-webkit-scrollbar-thumb {
+  background: #ff6b00;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #ff8800;
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2.5s infinite ease-in-out;
+}
+
+/* Professional 3D Flip & Slide-Down Entry Animations for Prediction Card */
+@keyframes predictionFlipSlide {
+  0% {
+    opacity: 0;
+    transform: perspective(900px) rotateX(-30deg) translateY(-26px) scale(0.93);
+    filter: brightness(1.9) drop-shadow(0 0 30px rgba(34, 197, 94, 0.8));
+  }
+  55% {
+    transform: perspective(900px) rotateX(5deg) translateY(3px) scale(1.02);
+    filter: brightness(1.2) drop-shadow(0 0 15px rgba(34, 197, 94, 0.4));
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(900px) rotateX(0deg) translateY(0) scale(1);
+    filter: brightness(1);
+  }
+}
+
+.animate-prediction-flip {
+  animation: predictionFlipSlide 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes signalPulseFlash {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7), 0 0 35px rgba(16, 185, 129, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 14px rgba(34, 197, 94, 0), 0 0 45px rgba(16, 185, 129, 0.6);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0), 0 0 25px rgba(16, 185, 129, 0.25);
+  }
+}
+
+.animate-signal-flash {
+  animation: signalPulseFlash 1.2s ease-out 1;
+}
