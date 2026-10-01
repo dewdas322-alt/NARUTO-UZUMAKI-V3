@@ -60,6 +60,7 @@ export interface PredictionData {
   regime: string;
   risk: 'LOW' | 'MODERATE' | 'HIGH';
   patternName: string;
+  patternType?: 'Dragon' | 'Mirror' | 'Zigzag' | 'Random';
   patternNote?: string;
   marketState: 'CHOPPY' | 'TRENDING' | 'RANDOM' | 'MIXED' | 'NO DATA';
   marketMetrics?: MarketMetrics;
@@ -91,6 +92,7 @@ export interface HistoryRecord {
   backupNum?: number;
   isWin: boolean;
   isJackpot?: boolean;
+  jackpotNum?: number;
   betAmount: number;
   timestamp: number;
   game: string;

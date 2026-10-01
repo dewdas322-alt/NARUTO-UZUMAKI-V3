@@ -738,6 +738,13 @@ export function calculatePrediction(
     regime: market.metrics.state,
     risk,
     patternName: brain.pattern,
+    patternType: (brain.patternType === 'DRAGON'
+      ? 'Dragon'
+      : brain.patternType === 'MIRROR'
+      ? 'Mirror'
+      : brain.patternType === 'ZIGZAG'
+      ? 'Zigzag'
+      : 'Random') as 'Dragon' | 'Mirror' | 'Zigzag' | 'Random',
     patternNote: brain.detail,
     marketState: market.metrics.state,
     marketMetrics: market.metrics,

@@ -15,11 +15,12 @@ import { EngineAnalysisView } from './components/EngineAnalysisView';
 import { InAppWebView } from './components/InAppWebView';
 
 export default function App() {
-  // Gate state: Do not run predictions or background polling until user selects Wingo game!
+  // Gate state: Starts strictly from 0 on every open, reopen, or restart!
   const [hasChosenGame, setHasChosenGame] = useState<boolean>(false);
   const [selectedGame, setSelectedGame] = useState<GameType>('WINGO_1M');
   const [currentTab, setCurrentTab] = useState<TabType>('predict');
 
+  // Fresh clean state: zero previous data
   const [issues, setIssues] = useState<LotteryIssue[]>([]);
   const [prediction, setPrediction] = useState<PredictionData | null>(null);
   const [history, setHistory] = useState<HistoryRecord[]>([]);
@@ -34,11 +35,58 @@ export default function App() {
   const [showInspector, setShowInspector] = useState<boolean>(false);
   const [customUrl, setCustomUrl] = useState<string>('');
 
+  // Pagination for unlimited infinite scrolling from 100% Live API
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [hasMore, setHasMore] = useState<boolean>(true);
+  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+
   const lastProcessedIssueRef = useRef<string | null>(null);
   const currentPredictionRef = useRef<PredictionData | null>(null);
   const currentLevelRef = useRef<number>(0);
   const winCountRef = useRef<number>(0);
   const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Auto-wipe everything on restart, reopen, or back navigation
+  useEffect(() => {
+    // 1. Wipe browser storage on boot so old data never persists
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch {}
+
+    // 2. Browser Back Navigation Handler -> Auto-wipes history back to 0
+    const handlePopState = () => {
+      setHistory([]);
+      setWinCount(0);
+      setCurrentLevel(0);
+      setPrediction(null);
+      lastProcessedIssueRef.current = null;
+      currentPredictionRef.current = null;
+      setHasChosenGame(false);
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch {}
+    };
+
+    // 3. Page exit/unload handler -> Purges cache on exit
+    const handlePageExit = () => {
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch {}
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('pagehide', handlePageExit);
+    window.addEventListener('beforeunload', handlePageExit);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('pagehide', handlePageExit);
+      window.removeEventListener('beforeunload', handlePageExit);
+    };
+  }, []);
 
   // Keep refs in sync
   useEffect(() => {
@@ -55,13 +103,14 @@ export default function App() {
 
   const currentGame = GAMES.find((g) => g.id === selectedGame) || GAMES[0];
 
-  // Fetch and update prediction logic — Uninterrupted, non-stop 24/7 continuous predictor!
+  // Fetch and update prediction logic — 100% LIVE API SYNC, starts strictly from 0
   const syncLiveData = useCallback(async () => {
     if (!hasChosenGame) return;
     setIsLoading(true);
 
     try {
-      const res = await fetchLotteryIssues(selectedGame, customUrl || undefined);
+      // Fetch 50 real issues from 100% live API
+      const res = await fetchLotteryIssues(selectedGame, customUrl || undefined, 50, 1);
       setLatencyMs(res.latencyMs);
       setIsOnline(true);
 
@@ -69,7 +118,7 @@ export default function App() {
         setIssues(res.list);
         const latestIssue = res.list[0];
 
-        // Check if there is a new result compared to what we last evaluated
+        // Check if there is a new real live draw compared to what we last evaluated
         if (latestIssue.issueNumber !== lastProcessedIssueRef.current) {
           const prevIssueId = lastProcessedIssueRef.current;
           lastProcessedIssueRef.current = latestIssue.issueNumber;
@@ -78,7 +127,7 @@ export default function App() {
           const isK3 = selectedGame === 'K3_1M';
           const actualSize = determineActualSize(num, isK3);
 
-          // Evaluate previous prediction if present
+          // Evaluate with previous prediction ONLY when active prediction was made
           const prevPred = currentPredictionRef.current;
           if (prevPred && prevIssueId) {
             const isSizeWin = prevPred.predictedSize === actualSize;
@@ -111,6 +160,7 @@ export default function App() {
               backupNum: prevPred.backupNum,
               isWin,
               isJackpot,
+              jackpotNum: isJackpot ? num : undefined,
               betAmount: BET_LEVELS[currentLevelRef.current] || BET_LEVELS[0],
               timestamp: Date.now(),
               game: currentGame.shortName,
@@ -118,7 +168,8 @@ export default function App() {
               step: currentLevelRef.current + 1
             };
 
-            setHistory((prev) => [newRec, ...prev.slice(0, 49)]);
+            // Prepend new verified live draw into history table
+            setHistory((prev) => [newRec, ...prev.filter((r) => r.fullPeriod !== latestIssue.issueNumber)]);
           }
 
           // Generate next prediction using 5-engine AI fusion (Dragon, Mirror, Zigzag, Random Adaptive)
@@ -148,6 +199,44 @@ export default function App() {
     }
   }, [hasChosenGame, selectedGame, customUrl, currentGame.shortName]);
 
+  // Infinite Scroll Handler: Fetches additional pages of real live draws from the API
+  const handleLoadMoreHistory = async () => {
+    if (isLoadingMore || !hasMore || !hasChosenGame) return;
+    setIsLoadingMore(true);
+
+    try {
+      const nextPage = currentPage + 1;
+      const res = await fetchLotteryIssues(selectedGame, customUrl || undefined, 50, nextPage);
+
+      if (res.list.length > 0) {
+        setCurrentPage(nextPage);
+      } else {
+        setHasMore(false);
+      }
+    } catch {
+      // Ignore pagination errors
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
+  // Back Button / Change Game Handler with Instant Auto-History Delete
+  const handleBackAndClearSession = () => {
+    soundManager.playTick();
+    setHistory([]);
+    setWinCount(0);
+    setCurrentLevel(0);
+    setPrediction(null);
+    lastProcessedIssueRef.current = null;
+    currentPredictionRef.current = null;
+    setHasChosenGame(false);
+    setCurrentPage(1);
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch {}
+  };
+
   // Handle Game choice confirmation from initial gate
   const handleConfirmInitialWingo = (gameId: GameType) => {
     setSelectedGame(gameId);
@@ -156,9 +245,13 @@ export default function App() {
     lastProcessedIssueRef.current = null;
     currentPredictionRef.current = null;
     setHistory([]);
+    setWinCount(0);
+    setCurrentLevel(0);
+    setCurrentPage(1);
+    setHasMore(true);
   };
 
-  // Handle Game change during active session
+  // Handle Game switch with auto history flush
   const handleSelectGame = (gameId: GameType) => {
     setSelectedGame(gameId);
     setPrediction(null);
@@ -166,6 +259,10 @@ export default function App() {
     currentPredictionRef.current = null;
     setCustomUrl('');
     setHistory([]);
+    setWinCount(0);
+    setCurrentLevel(0);
+    setCurrentPage(1);
+    setHasMore(true);
   };
 
   // Sound toggle
@@ -215,7 +312,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [hasChosenGame, currentGame.durationSec, soundEnabled, syncLiveData]);
 
-  // Continuous background polling loop — every 3 seconds non-stop
+  // Continuous background polling loop — runs uninterruptedly
   useEffect(() => {
     if (!hasChosenGame) return;
 
@@ -231,7 +328,7 @@ export default function App() {
   }, [hasChosenGame, syncLiveData]);
 
   return (
-    <div className="min-h-screen bg-[#070c17] text-gray-200 flex flex-col font-rajdhani antialiased pb-20 selection:bg-[#10b981]/30 selection:text-white">
+    <div className="min-h-screen bg-[#070b16] text-gray-200 flex flex-col font-rajdhani antialiased pb-20 selection:bg-[#10b981]/30 selection:text-white">
       {/* Top Header */}
       <Header
         latencyMs={latencyMs}
@@ -242,7 +339,7 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-xl w-full mx-auto p-3 sm:p-4 flex flex-col gap-4">
+      <main className="flex-1 max-w-md w-full mx-auto p-3 sm:p-4 flex flex-col gap-3.5">
         {/* Game Mode Selector Strip (hidden in embedded webpage tab) */}
         {hasChosenGame && currentTab !== 'webpage' && (
           <GameSelector
@@ -251,10 +348,10 @@ export default function App() {
           />
         )}
 
-        {/* Tab 1: Predict (Exact Match to Screenshot) */}
+        {/* Tab 1: Predict (Exact Match to Screenshot IMG_20261001_164834_632.jpg) */}
         {currentTab === 'predict' && (
           <>
-            {/* Top Glowing Prediction Card with 3D Flip & Slide-Down Animation */}
+            {/* Top Glowing Prediction Card with 3D Flip Entry & Mobile Vibration */}
             <PredictionCard
               prediction={prediction}
               currentGame={currentGame}
@@ -263,14 +360,18 @@ export default function App() {
               isLoading={isLoading}
               onRefresh={syncLiveData}
               winCount={winCount}
-              onChangeGame={() => setHasChosenGame(false)}
+              onChangeGame={handleBackAndClearSession}
             />
 
-            {/* Verification & Accuracy History Table */}
+            {/* Verification & Accuracy History Table with Auto-Wipe and Unlimited Scrolling */}
             <HistoryTable
               records={history}
               currentGame={currentGame}
               isOnline={isOnline}
+              onLoadMore={handleLoadMoreHistory}
+              hasMore={hasMore}
+              isLoadingMore={isLoadingMore}
+              onClearHistory={() => setHistory([])}
             />
           </>
         )}
