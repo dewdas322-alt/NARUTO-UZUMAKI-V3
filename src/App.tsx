@@ -8,18 +8,20 @@ import { GameSelector } from './components/GameSelector';
 import { PredictionCard } from './components/PredictionCard';
 import { HistoryTable } from './components/HistoryTable';
 import { DataTunnelModal } from './components/DataTunnelModal';
-import { WingoGateModal } from './components/WingoGateModal';
 import { BottomNavBar, TabType } from './components/BottomNavBar';
 import { EngineAnalysisView } from './components/EngineAnalysisView';
 import { InAppWebView } from './components/InAppWebView';
+import { AuthUser, getStoredOrAutoAdminUser } from './utils/authDatabase';
 
 export default function App() {
-  // Gate state: Starts strictly from 0 on every open, reopen, or restart!
-  const [hasChosenGame, setHasChosenGame] = useState<boolean>(false);
-  const [selectedGame, setSelectedGame] = useState<GameType>('WINGO_1M');
-  const [currentTab, setCurrentTab] = useState<TabType>('predict');
+  // SPECIFICATION: Automatic background verification for Admin ID 655675576694 — ZERO POP-UPS!
+  const [authUser] = useState<AuthUser>(() => getStoredOrAutoAdminUser());
 
-  // Fresh clean state: zero previous data
+  // Default landing tab is 'predict' with all features turned on immediately!
+  const [currentTab, setCurrentTab] = useState<TabType>('predict');
+  const [selectedGame, setSelectedGame] = useState<GameType>('WINGO_1M');
+
+  // Prediction and live API state
   const [issues, setIssues] = useState<LotteryIssue[]>([]);
   const [prediction, setPrediction] = useState<PredictionData | null>(null);
   const [history, setHistory] = useState<HistoryRecord[]>([]);
@@ -44,15 +46,8 @@ export default function App() {
   const winCountRef = useRef<number>(0);
   const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Auto-wipe everything on restart, reopen, or back navigation
+  // Auto-wipe history on browser back navigation
   useEffect(() => {
-    // 1. Wipe browser storage on boot so old data never persists
-    try {
-      localStorage.clear();
-      sessionStorage.clear();
-    } catch {}
-
-    // 2. Browser Back Navigation Handler -> Auto-wipes history back to 0
     const handlePopState = () => {
       setHistory([]);
       setWinCount(0);
@@ -60,29 +55,11 @@ export default function App() {
       setPrediction(null);
       lastProcessedIssueRef.current = null;
       currentPredictionRef.current = null;
-      setHasChosenGame(false);
-      try {
-        localStorage.clear();
-        sessionStorage.clear();
-      } catch {}
-    };
-
-    // 3. Page exit/unload handler -> Purges cache on exit
-    const handlePageExit = () => {
-      try {
-        localStorage.clear();
-        sessionStorage.clear();
-      } catch {}
     };
 
     window.addEventListener('popstate', handlePopState);
-    window.addEventListener('pagehide', handlePageExit);
-    window.addEventListener('beforeunload', handlePageExit);
-
     return () => {
       window.removeEventListener('popstate', handlePopState);
-      window.removeEventListener('pagehide', handlePageExit);
-      window.removeEventListener('beforeunload', handlePageExit);
     };
   }, []);
 
@@ -103,7 +80,6 @@ export default function App() {
 
   // Fetch and update prediction logic — 100% LIVE API SYNC, starts strictly from 0
   const syncLiveData = useCallback(async () => {
-    if (!hasChosenGame) return;
     setIsLoading(true);
 
     try {
@@ -129,7 +105,7 @@ export default function App() {
           const prevPred = currentPredictionRef.current;
           if (prevPred && prevIssueId) {
             const isSizeWin = prevPred.predictedSize === actualSize;
-            const isJackpot = prevPred.predictedNum === num || prevPred.backupNum === num;
+            const isJackpot = prevPred.predictedNum === num;
             const isWin = isSizeWin || isJackpot;
 
             if (isWin) {
@@ -150,7 +126,6 @@ export default function App() {
               actualSize,
               predictedSize: prevPred.predictedSize,
               predictedNum: prevPred.predictedNum,
-              backupNum: prevPred.backupNum,
               isWin,
               isJackpot,
               jackpotNum: isJackpot ? num : undefined,
@@ -182,7 +157,7 @@ export default function App() {
       }
     } catch {
       setIsOnline(false);
-      // Auto-retry in 1.5s so prediction never halts or freezes
+      // Auto-retry in 1.5s
       if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
       retryTimeoutRef.current = setTimeout(() => {
         syncLiveData();
@@ -190,11 +165,11 @@ export default function App() {
     } finally {
       setIsLoading(false);
     }
-  }, [hasChosenGame, selectedGame, customUrl, currentGame.shortName]);
+  }, [selectedGame, customUrl, currentGame.shortName]);
 
   // Infinite Scroll Handler: Fetches additional pages of real live draws from the API
   const handleLoadMoreHistory = async () => {
-    if (isLoadingMore || !hasMore || !hasChosenGame) return;
+    if (isLoadingMore || !hasMore) return;
     setIsLoadingMore(true);
 
     try {
@@ -213,38 +188,7 @@ export default function App() {
     }
   };
 
-  // Back Button / Change Game Handler with Instant Auto-History Delete
-  const handleBackAndClearSession = () => {
-    soundManager.playTick();
-    setHistory([]);
-    setWinCount(0);
-    setCurrentLevel(0);
-    setPrediction(null);
-    lastProcessedIssueRef.current = null;
-    currentPredictionRef.current = null;
-    setHasChosenGame(false);
-    setCurrentPage(1);
-    try {
-      localStorage.clear();
-      sessionStorage.clear();
-    } catch {}
-  };
-
-  // Handle Game choice confirmation from initial gate
-  const handleConfirmInitialWingo = (gameId: GameType) => {
-    setSelectedGame(gameId);
-    setHasChosenGame(true);
-    setPrediction(null);
-    lastProcessedIssueRef.current = null;
-    currentPredictionRef.current = null;
-    setHistory([]);
-    setWinCount(0);
-    setCurrentLevel(0);
-    setCurrentPage(1);
-    setHasMore(true);
-  };
-
-  // Handle Game switch with auto history flush
+  // Change Game Handler
   const handleSelectGame = (gameId: GameType) => {
     setSelectedGame(gameId);
     setPrediction(null);
@@ -270,8 +214,6 @@ export default function App() {
 
   // Continuous Clock countdown timer effect
   useEffect(() => {
-    if (!hasChosenGame) return;
-
     const updateCountdown = () => {
       const now = new Date();
       const currentSeconds = now.getSeconds();
@@ -290,7 +232,7 @@ export default function App() {
 
       setRemainingSeconds(rem);
 
-      if (rem <= 5 && rem > 0 && soundEnabled) {
+      if (rem <= 5 && rem > 0 && soundEnabled && currentTab === 'predict') {
         soundManager.playTick();
       }
 
@@ -303,12 +245,10 @@ export default function App() {
     updateCountdown();
     const interval = setInterval(updateCountdown, 1000);
     return () => clearInterval(interval);
-  }, [hasChosenGame, currentGame.durationSec, soundEnabled, syncLiveData]);
+  }, [currentGame.durationSec, soundEnabled, syncLiveData, currentTab]);
 
   // Continuous background polling loop — runs uninterruptedly
   useEffect(() => {
-    if (!hasChosenGame) return;
-
     syncLiveData();
     const timer = setInterval(() => {
       syncLiveData();
@@ -318,33 +258,40 @@ export default function App() {
       clearInterval(timer);
       if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
     };
-  }, [hasChosenGame, syncLiveData]);
+  }, [syncLiveData]);
 
   return (
-    <div className="min-h-screen bg-[#070b16] text-gray-200 flex flex-col font-rajdhani antialiased pb-20 selection:bg-[#10b981]/30 selection:text-white">
+    <div className="min-h-screen bg-[#070b16] text-gray-200 flex flex-col font-rajdhani antialiased pb-20 selection:bg-[#ff6b00]/30 selection:text-white">
       {/* Top Header */}
       <Header
         latencyMs={latencyMs}
-        isOnline={hasChosenGame ? isOnline : false}
+        isOnline={isOnline}
         soundEnabled={soundEnabled}
         onToggleSound={handleToggleSound}
         onOpenInspector={() => setShowInspector(true)}
+        authUser={authUser}
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-md w-full mx-auto p-3 sm:p-4 flex flex-col gap-3.5">
-        {/* Game Mode Selector Strip (hidden in embedded webpage tab) */}
-        {hasChosenGame && currentTab !== 'webpage' && (
+      <main
+        className={`flex-1 w-full mx-auto flex flex-col transition-all ${
+          currentTab === 'webpage'
+            ? 'max-w-2xl p-1 sm:p-2 flex-1 h-full'
+            : 'max-w-md p-3 sm:p-4 gap-3.5'
+        }`}
+      >
+        {/* Game Mode Selector Strip */}
+        {currentTab !== 'webpage' && (
           <GameSelector
             selectedGame={selectedGame}
             onSelectGame={handleSelectGame}
           />
         )}
 
-        {/* Tab 1: Predict (Exact Match to Screenshot IMG_20261001_164834_632.jpg) */}
+        {/* Tab 1: Predict (All features ON immediately!) */}
         {currentTab === 'predict' && (
           <>
-            {/* Top Glowing Prediction Card with 3D Flip Entry & Mobile Vibration */}
+            {/* Top Glowing Prediction Card with 3D Flip Entry & Mobile Vibration (NO backup number) */}
             <PredictionCard
               prediction={prediction}
               currentGame={currentGame}
@@ -353,7 +300,14 @@ export default function App() {
               isLoading={isLoading}
               onRefresh={syncLiveData}
               winCount={winCount}
-              onChangeGame={handleBackAndClearSession}
+              onChangeGame={() => {
+                setHistory([]);
+                setWinCount(0);
+                setCurrentLevel(0);
+                setPrediction(null);
+                lastProcessedIssueRef.current = null;
+                currentPredictionRef.current = null;
+              }}
             />
 
             {/* Verification & Accuracy History Table with Auto-Wipe and Unlimited Scrolling */}
@@ -369,7 +323,7 @@ export default function App() {
           </>
         )}
 
-        {/* Tab 2: AI Engines Breakdown (Dragon, Mirror, Zigzag, Block, Random) */}
+        {/* Tab 2: AI Engines Breakdown (All 5 Engines ON immediately!) */}
         {currentTab === 'engines' && (
           <EngineAnalysisView
             prediction={prediction}
@@ -378,25 +332,22 @@ export default function App() {
           />
         )}
 
-        {/* Tab 3: Direct In-App Game Web View (Opens directly in-app, no external browser) */}
-        {currentTab === 'webpage' && (
+        {/* Tab 3: PERSISTENT In-App Game Web View (Loads ONCE, top live prediction ticker active!) */}
+        <div className={`w-full flex-1 h-full ${currentTab === 'webpage' ? 'flex flex-col' : 'hidden'}`}>
           <InAppWebView
             onBackToPredict={() => setCurrentTab('predict')}
+            prediction={prediction}
+            history={history}
+            isVerified={true}
           />
-        )}
+        </div>
       </main>
 
-      {/* Bottom Navigation Bar (Webpage | Hack / Predict | AI Engines) */}
+      {/* Bottom Navigation Bar (All tabs immediately accessible without pop-ups!) */}
       <BottomNavBar
         currentTab={currentTab}
         onSelectTab={(tab) => setCurrentTab(tab)}
-      />
-
-      {/* Initial Wingo Choice Gate Modal (Bypasses License Key, Forces Wingo Selection First) */}
-      <WingoGateModal
-        isOpen={!hasChosenGame}
-        selectedGame={selectedGame}
-        onConfirmSelection={handleConfirmInitialWingo}
+        isVerified={true}
       />
 
       {/* Data Tunnel Modal */}

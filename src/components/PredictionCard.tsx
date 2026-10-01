@@ -205,11 +205,6 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
                 <span className="text-gray-200 font-bold">
                   {prediction ? prediction.fullPeriod : '...'}
                 </span>
-                {prediction?.backupNum !== undefined && (
-                  <span className="text-gray-400 text-[11px] ml-1 bg-black/40 px-2 py-0.5 rounded border border-gray-700/50">
-                    Backup: [{prediction.backupNum}]
-                  </span>
-                )}
               </div>
             </div>
           </div>
