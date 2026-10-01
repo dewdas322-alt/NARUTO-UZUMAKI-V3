@@ -8,20 +8,25 @@ import { GameSelector } from './components/GameSelector';
 import { PredictionCard } from './components/PredictionCard';
 import { HistoryTable } from './components/HistoryTable';
 import { DataTunnelModal } from './components/DataTunnelModal';
+import { WingoGateModal } from './components/WingoGateModal';
 import { BottomNavBar, TabType } from './components/BottomNavBar';
 import { EngineAnalysisView } from './components/EngineAnalysisView';
 import { InAppWebView } from './components/InAppWebView';
 import { AuthUser, getStoredOrAutoAdminUser } from './utils/authDatabase';
 
 export default function App() {
-  // SPECIFICATION: Automatic background verification for Admin ID 655675576694 — ZERO POP-UPS!
+  // Automatic background verification for Admin ID (655675576694)
   const [authUser] = useState<AuthUser>(() => getStoredOrAutoAdminUser());
 
-  // Default landing tab is 'predict' with all features turned on immediately!
-  const [currentTab, setCurrentTab] = useState<TabType>('predict');
+  // CRITICAL REQUIREMENT: Must NOT give prediction directly on boot/reopen/restart!
+  // User MUST choose/confirm WINGO game mode first!
+  const [hasChosenGame, setHasChosenGame] = useState<boolean>(false);
   const [selectedGame, setSelectedGame] = useState<GameType>('WINGO_1M');
 
-  // Prediction and live API state
+  // Active navigation tab
+  const [currentTab, setCurrentTab] = useState<TabType>('predict');
+
+  // Prediction and live API state (clean start with 0 data)
   const [issues, setIssues] = useState<LotteryIssue[]>([]);
   const [prediction, setPrediction] = useState<PredictionData | null>(null);
   const [history, setHistory] = useState<HistoryRecord[]>([]);
@@ -46,7 +51,7 @@ export default function App() {
   const winCountRef = useRef<number>(0);
   const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Auto-wipe history on browser back navigation
+  // Auto-wipe history & reset to WINGO choice gate on reopen, restart or browser back navigation
   useEffect(() => {
     const handlePopState = () => {
       setHistory([]);
@@ -55,6 +60,7 @@ export default function App() {
       setPrediction(null);
       lastProcessedIssueRef.current = null;
       currentPredictionRef.current = null;
+      setHasChosenGame(false);
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -78,8 +84,9 @@ export default function App() {
 
   const currentGame = GAMES.find((g) => g.id === selectedGame) || GAMES[0];
 
-  // Fetch and update prediction logic — 100% LIVE API SYNC, starts strictly from 0
+  // Fetch and update prediction logic — 100% LIVE API SYNC, ONLY runs after WINGO is chosen!
   const syncLiveData = useCallback(async () => {
+    if (!hasChosenGame) return;
     setIsLoading(true);
 
     try {
@@ -140,14 +147,14 @@ export default function App() {
             setHistory((prev) => [newRec, ...prev.filter((r) => r.fullPeriod !== latestIssue.issueNumber)]);
           }
 
-          // Generate next prediction using 5-engine AI fusion (Dragon, Mirror, Zigzag, Random Adaptive)
+          // Generate next prediction using supercharged multi-engine AI fusion
           const nextPred = calculatePrediction(res.list, selectedGame, currentLevelRef.current);
           if (nextPred) {
             setPrediction(nextPred);
             soundManager.playChakraTone(560, 0.2);
           }
         } else if (!currentPredictionRef.current) {
-          // If prediction was not yet generated (e.g. initial boot), generate immediately!
+          // If prediction was not yet generated (initial activation), generate immediately!
           lastProcessedIssueRef.current = latestIssue.issueNumber;
           const initialPred = calculatePrediction(res.list, selectedGame, currentLevelRef.current);
           if (initialPred) {
@@ -160,16 +167,18 @@ export default function App() {
       // Auto-retry in 1.5s
       if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
       retryTimeoutRef.current = setTimeout(() => {
-        syncLiveData();
+        if (hasChosenGame) {
+          syncLiveData();
+        }
       }, 1500);
     } finally {
       setIsLoading(false);
     }
-  }, [selectedGame, customUrl, currentGame.shortName]);
+  }, [hasChosenGame, selectedGame, customUrl, currentGame.shortName]);
 
   // Infinite Scroll Handler: Fetches additional pages of real live draws from the API
   const handleLoadMoreHistory = async () => {
-    if (isLoadingMore || !hasMore) return;
+    if (isLoadingMore || !hasMore || !hasChosenGame) return;
     setIsLoadingMore(true);
 
     try {
@@ -188,7 +197,34 @@ export default function App() {
     }
   };
 
-  // Change Game Handler
+  // Confirm Initial WINGO Choice -> Activates Prediction
+  const handleConfirmInitialWingo = (gameId: GameType) => {
+    setSelectedGame(gameId);
+    setHasChosenGame(true);
+    setPrediction(null);
+    lastProcessedIssueRef.current = null;
+    currentPredictionRef.current = null;
+    setHistory([]);
+    setWinCount(0);
+    setCurrentLevel(0);
+    setCurrentPage(1);
+    setHasMore(true);
+  };
+
+  // Change Game / Reset session back to WINGO selection gate
+  const handleChangeGameAndReset = () => {
+    soundManager.playTick();
+    setHistory([]);
+    setWinCount(0);
+    setCurrentLevel(0);
+    setPrediction(null);
+    lastProcessedIssueRef.current = null;
+    currentPredictionRef.current = null;
+    setHasChosenGame(false);
+    setCurrentPage(1);
+  };
+
+  // Select game via top tabs (when game is already active)
   const handleSelectGame = (gameId: GameType) => {
     setSelectedGame(gameId);
     setPrediction(null);
@@ -212,8 +248,10 @@ export default function App() {
     }
   };
 
-  // Continuous Clock countdown timer effect
+  // Continuous Clock countdown timer effect — ONLY RUNS WHEN WINGO HAS BEEN CHOSEN!
   useEffect(() => {
+    if (!hasChosenGame) return;
+
     const updateCountdown = () => {
       const now = new Date();
       const currentSeconds = now.getSeconds();
@@ -245,10 +283,12 @@ export default function App() {
     updateCountdown();
     const interval = setInterval(updateCountdown, 1000);
     return () => clearInterval(interval);
-  }, [currentGame.durationSec, soundEnabled, syncLiveData, currentTab]);
+  }, [hasChosenGame, currentGame.durationSec, soundEnabled, syncLiveData, currentTab]);
 
-  // Continuous background polling loop — runs uninterruptedly
+  // Continuous background polling loop — ONLY RUNS WHEN WINGO HAS BEEN CHOSEN!
   useEffect(() => {
+    if (!hasChosenGame) return;
+
     syncLiveData();
     const timer = setInterval(() => {
       syncLiveData();
@@ -258,14 +298,14 @@ export default function App() {
       clearInterval(timer);
       if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
     };
-  }, [syncLiveData]);
+  }, [hasChosenGame, syncLiveData]);
 
   return (
     <div className="min-h-screen bg-[#070b16] text-gray-200 flex flex-col font-rajdhani antialiased pb-20 selection:bg-[#ff6b00]/30 selection:text-white">
       {/* Top Header */}
       <Header
         latencyMs={latencyMs}
-        isOnline={isOnline}
+        isOnline={hasChosenGame ? isOnline : false}
         soundEnabled={soundEnabled}
         onToggleSound={handleToggleSound}
         onOpenInspector={() => setShowInspector(true)}
@@ -280,18 +320,18 @@ export default function App() {
             : 'max-w-md p-3 sm:p-4 gap-3.5'
         }`}
       >
-        {/* Game Mode Selector Strip */}
-        {currentTab !== 'webpage' && (
+        {/* Game Mode Selector Strip (Active when Wingo is chosen and not on webpage tab) */}
+        {hasChosenGame && currentTab !== 'webpage' && (
           <GameSelector
             selectedGame={selectedGame}
             onSelectGame={handleSelectGame}
           />
         )}
 
-        {/* Tab 1: Predict (All features ON immediately!) */}
+        {/* Tab 1: Predict (Active after Wingo is chosen) */}
         {currentTab === 'predict' && (
           <>
-            {/* Top Glowing Prediction Card with 3D Flip Entry & Mobile Vibration (NO backup number) */}
+            {/* Top Glowing Prediction Card with 3D Flip Entry & Mobile Vibration */}
             <PredictionCard
               prediction={prediction}
               currentGame={currentGame}
@@ -300,14 +340,7 @@ export default function App() {
               isLoading={isLoading}
               onRefresh={syncLiveData}
               winCount={winCount}
-              onChangeGame={() => {
-                setHistory([]);
-                setWinCount(0);
-                setCurrentLevel(0);
-                setPrediction(null);
-                lastProcessedIssueRef.current = null;
-                currentPredictionRef.current = null;
-              }}
+              onChangeGame={handleChangeGameAndReset}
             />
 
             {/* Verification & Accuracy History Table with Auto-Wipe and Unlimited Scrolling */}
@@ -323,7 +356,7 @@ export default function App() {
           </>
         )}
 
-        {/* Tab 2: AI Engines Breakdown (All 5 Engines ON immediately!) */}
+        {/* Tab 2: AI Engines Breakdown (All Supercharged Engines) */}
         {currentTab === 'engines' && (
           <EngineAnalysisView
             prediction={prediction}
@@ -332,22 +365,29 @@ export default function App() {
           />
         )}
 
-        {/* Tab 3: PERSISTENT In-App Game Web View (Loads ONCE, top live prediction ticker active!) */}
+        {/* Tab 3: PERSISTENT In-App Game Web View (Loads ONCE, top live prediction ticker active) */}
         <div className={`w-full flex-1 h-full ${currentTab === 'webpage' ? 'flex flex-col' : 'hidden'}`}>
           <InAppWebView
             onBackToPredict={() => setCurrentTab('predict')}
             prediction={prediction}
             history={history}
-            isVerified={true}
+            isVerified={hasChosenGame}
           />
         </div>
       </main>
 
-      {/* Bottom Navigation Bar (All tabs immediately accessible without pop-ups!) */}
+      {/* Bottom Navigation Bar */}
       <BottomNavBar
         currentTab={currentTab}
         onSelectTab={(tab) => setCurrentTab(tab)}
         isVerified={true}
+      />
+
+      {/* SPECIFICATION: MANDATORY INITIAL WINGO CHOICE GATE (Must choose WINGO before prediction starts) */}
+      <WingoGateModal
+        isOpen={!hasChosenGame}
+        selectedGame={selectedGame}
+        onConfirmSelection={handleConfirmInitialWingo}
       />
 
       {/* Data Tunnel Modal */}
