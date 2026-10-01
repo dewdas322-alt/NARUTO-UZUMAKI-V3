@@ -16,7 +16,7 @@ export interface AuthUser {
 }
 
 export const ADMIN_MOBILE = '655675576694';
-export const REFERRAL_URL = 'https://bdgwincf.com/#/register?invitationCode=4148715921265';
+export const REFERRAL_URL = 'https://bdgwin78.com/#/register?invitationCode=4148715921265';
 export const INVITATION_CODE = '4148715921265';
 
 export const DEFAULT_ADMIN_USER: AuthUser = {

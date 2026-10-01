@@ -1,7 +1,7 @@
 import { GameConfig, GameType, LotteryIssue, PredictionData, EngineResult, MarketMetrics } from '../types';
 import { NOVIX_DB, PATTERN_COMBOS } from './patternDatabase';
 
-export const BDGWIN_REGISTER_URL = 'https://bdgwincf.com/#/register?invitationCode=4148715921265';
+export const BDGWIN_REGISTER_URL = 'https://bdgwin78.com/#/register?invitationCode=4148715921265';
 export const INVITATION_CODE = '4148715921265';
 
 export const BET_LEVELS = [300, 900, 2700, 8100, 24300, 72900];

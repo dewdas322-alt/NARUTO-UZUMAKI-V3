@@ -13,7 +13,7 @@ interface InAppWebViewProps {
 
 export const InAppWebView: React.FC<InAppWebViewProps> = ({
   onBackToPredict,
-  defaultUrl = 'https://bdgwincf.com/#/register?invitationCode=4148715921265',
+  defaultUrl = 'https://bdgwin78.com/#/register?invitationCode=4148715921265',
   prediction,
   history,
   isVerified = true
