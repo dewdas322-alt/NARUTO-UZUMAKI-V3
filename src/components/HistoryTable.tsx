@@ -75,41 +75,26 @@ export const HistoryTable: React.FC<HistoryTableProps> = ({
         </div>
       </div>
 
-      {/* 4 Stat Badges in a Horizontal Row (Glitch-Free Responsive Display) */}
-      <div className="grid grid-cols-4 gap-1.5 sm:gap-2 text-center font-mono">
+      {/* 4 Stat Badges in a Horizontal Row (Starts strictly from 0 on open/restart) */}
+      <div className="grid grid-cols-4 gap-2 text-center font-mono text-xs">
         {/* Wins Badge */}
-        <div className="bg-[#062c20] border border-[#065f46] py-1.5 px-1 rounded-xl flex flex-col items-center justify-center transition-all">
-          <span className="text-[10px] text-[#4ade80]/90 font-bold uppercase tracking-wider">Wins</span>
-          <span className="text-sm sm:text-base font-orbitron font-black text-[#4ade80] leading-none mt-0.5">
-            {wins}
-          </span>
+        <div className="bg-[#062c20] border border-[#065f46] text-[#4ade80] py-1.5 px-2 rounded-lg font-bold truncate">
+          Wins: {wins}
         </div>
 
         {/* Jackpot Badge */}
-        <div className="bg-[#2a0e2e] border border-[#a21caf] py-1.5 px-1 rounded-xl flex flex-col items-center justify-center shadow-[0_0_12px_rgba(236,72,153,0.25)] transition-all">
-          <span className="text-[10px] text-[#f472b6] font-bold uppercase tracking-wider flex items-center justify-center gap-0.5">
-            <span className="text-[9px]">🔥</span>
-            <span>Jackpot</span>
-          </span>
-          <span className="text-sm sm:text-base font-orbitron font-black text-[#f472b6] leading-none mt-0.5">
-            {jackpots}
-          </span>
+        <div className="bg-[#1e1b4b] border border-[#4338ca] text-[#f472b6] py-1.5 px-2 rounded-lg font-bold truncate">
+          Jackpot: {jackpots}
         </div>
 
         {/* Loss Badge */}
-        <div className="bg-[#450a0a] border border-[#991b1b] py-1.5 px-1 rounded-xl flex flex-col items-center justify-center transition-all">
-          <span className="text-[10px] text-[#f87171]/90 font-bold uppercase tracking-wider">Loss</span>
-          <span className="text-sm sm:text-base font-orbitron font-black text-[#f87171] leading-none mt-0.5">
-            {losses}
-          </span>
+        <div className="bg-[#450a0a] border border-[#991b1b] text-[#f87171] py-1.5 px-2 rounded-lg font-bold truncate">
+          Loss: {losses}
         </div>
 
-        {/* Winrate / Accuracy Badge */}
-        <div className="bg-[#0c2438] border border-[#075985] py-1.5 px-1 rounded-xl flex flex-col items-center justify-center transition-all">
-          <span className="text-[10px] text-[#38bdf8]/90 font-bold uppercase tracking-wider">Accuracy</span>
-          <span className="text-sm sm:text-base font-orbitron font-black text-[#38bdf8] leading-none mt-0.5">
-            {winRate}%
-          </span>
+        {/* Winrate Badge */}
+        <div className="bg-[#0c2438] border border-[#075985] text-[#38bdf8] py-1.5 px-2 rounded-lg font-bold truncate">
+          Winrate: {winRate}%
         </div>
       </div>
 

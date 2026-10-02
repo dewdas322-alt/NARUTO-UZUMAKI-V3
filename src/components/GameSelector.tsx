@@ -19,18 +19,20 @@ export const GameSelector: React.FC<GameSelectorProps> = ({
         return <Clock className="w-3.5 h-3.5 text-amber-400" />;
       case 'WINGO_1M':
         return <Flame className="w-3.5 h-3.5 text-[#10b981]" />;
+      case 'WINGO_3M':
+        return <Clock className="w-3.5 h-3.5 text-emerald-400" />;
+      case 'WINGO_5M':
+        return <Clock className="w-3.5 h-3.5 text-purple-400" />;
       case 'TRX_1M':
         return <Radio className="w-3.5 h-3.5 text-cyan-400" />;
       case 'K3_1M':
         return <Dices className="w-3.5 h-3.5 text-rose-400" />;
-      default:
-        return <Clock className="w-3.5 h-3.5 text-amber-400" />;
     }
   };
 
   return (
     <div className="w-full bg-[#0b1220] p-1.5 rounded-2xl border border-[#1e293b]/90 shadow-inner">
-      <div className="grid grid-cols-4 sm:grid-cols-4 gap-1.5">
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
         {GAMES.map((game) => {
           const isActive = game.id === selectedGame;
           return (

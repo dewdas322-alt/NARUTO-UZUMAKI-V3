@@ -25,12 +25,14 @@ export const WingoGateModal: React.FC<WingoGateModalProps> = ({
         return <Clock className="w-5 h-5 text-amber-400" />;
       case 'WINGO_1M':
         return <Flame className="w-5 h-5 text-[#ff6b00]" />;
+      case 'WINGO_3M':
+        return <Clock className="w-5 h-5 text-emerald-400" />;
+      case 'WINGO_5M':
+        return <Clock className="w-5 h-5 text-purple-400" />;
       case 'TRX_1M':
         return <Radio className="w-5 h-5 text-cyan-400" />;
       case 'K3_1M':
         return <Dices className="w-5 h-5 text-rose-400" />;
-      default:
-        return <Clock className="w-5 h-5 text-amber-400" />;
     }
   };
 
@@ -67,8 +69,8 @@ export const WingoGateModal: React.FC<WingoGateModalProps> = ({
           </p>
         </div>
 
-        {/* Game Mode Grid (Clean 4-Card 2x2 layout) */}
-        <div className="relative z-10 grid grid-cols-2 gap-2.5 mb-6 text-left">
+        {/* Game Mode Grid */}
+        <div className="relative z-10 grid grid-cols-2 sm:grid-cols-3 gap-2.5 mb-6 text-left">
           {GAMES.map((game) => {
             const isSelected = chosen === game.id;
             return (

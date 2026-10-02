@@ -53,17 +53,25 @@ export interface PredictionData {
   smallCount: number;
   timestamp: number;
   gameId: GameType;
+  // Enhanced AI Fusion Fields from HTML
   confidence: number;
   agreeCount: number;
   totalEngines: number;
   regime: string;
   risk: 'LOW' | 'MODERATE' | 'HIGH';
   patternName: string;
-  patternType: 'Dragon' | 'Mirror' | 'Zigzag' | 'Random';
-  patternNote: string;
-  marketState: string;
+  patternType?: 'Dragon' | 'Mirror' | 'Zigzag' | 'Random';
+  patternNote?: string;
+  marketState: 'CHOPPY' | 'TRENDING' | 'RANDOM' | 'MIXED' | 'NO DATA';
   marketMetrics?: MarketMetrics;
-  engines: Record<string, EngineResult>;
+  engines: {
+    RDX: EngineResult;
+    VANTA: EngineResult;
+    NOCTIS: EngineResult;
+    BRAIN: EngineResult;
+    MARKET: EngineResult;
+    FORMULA8: EngineResult;
+  };
   humanCall?: 'BIG' | 'SMALL';
   humanConf?: number;
   aiCall?: 'BIG' | 'SMALL';
@@ -76,11 +84,12 @@ export interface PredictionData {
 
 export interface HistoryRecord {
   period: string;
-  fullPeriod?: string;
+  fullPeriod: string;
   actualNum: number;
   actualSize: 'BIG' | 'SMALL';
   predictedSize: 'BIG' | 'SMALL';
   predictedNum: number;
+  backupNum?: number;
   isWin: boolean;
   isJackpot?: boolean;
   jackpotNum?: number;
@@ -89,4 +98,20 @@ export interface HistoryRecord {
   game: string;
   conf?: number;
   step?: number;
+}
+
+export interface TargetStats {
+  current: number;
+  target: number;
+  wins: number;
+  losses: number;
+  active: boolean;
+  totalCompleted: number;
+}
+
+export interface LevelStats {
+  num: number;
+  losses: number;
+  max: number;
+  wins: number;
 }

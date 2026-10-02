@@ -218,118 +218,33 @@ export function buildPatternDatabase(): Record<string, PatternItem[]> {
     add({ key: k2, call: k2.slice(-1) === 'S' ? 'BIG' : 'SMALL', conf: 64, type: 'zigzag', len: i });
   }
 
-  // Mirror patterns (Standard & Long Mirrors)
+  // Mirror patterns
   const mirrors = [
-    // 4-step mirrors
-    'BSSB', 'SBBS', 'BBSB', 'SBSS', 'BSBB', 'SBBB', 'SSBS', 'BBBS',
-    // 5-step mirrors
-    'BSSSB', 'SBBBS', 'BBSBB', 'SSBSS', 'BBSSB', 'SSBBS', 'BSBSS', 'SBSBB',
-    // 6-step mirrors
-    'BBSSBB', 'SSBBSS', 'BSSBSS', 'SBBSBB', 'BBSBBS', 'SSBSSB', 'BSBBSB', 'SBSBSB',
-    'BSSSSB', 'SBBBBS', 'BBBSSB', 'SSSBBS', 'BSBBSS', 'SBSSBB', 'BSSBSB', 'SBBSSB',
-    // 7-step mirrors
-    'BSSBSSB', 'SBBSBBS', 'BSSSBSS', 'SBBBSBB', 'BBSSSB', 'SSBBBS', 'BSBSBSB', 'SBSBSBS',
-    // 8-step mirrors
-    'BBSSBBSS', 'SSBBSSBB', 'BSSSBBBS', 'SBBBSBBB', 'BBSSSSBB', 'SSBBBBSS',
-    'BSSBBSSB', 'SBBSSBBS', 'BBSSSBBB', 'SSBBBSSS', 'BSBSBSBS', 'SBSBSBSB',
-    'BBBSBBBS', 'SSSBSSSB', 'BSSSSSSB', 'SBBBBBBS', 'BBSBBSBB', 'SSBSSBSS',
-    // 9-step mirrors
-    'BBBSSBBSS', 'SSSBBSSBB', 'BSSSBSSSB', 'SBBBSBBBS', 'BBSSBSSBB', 'SSBBSBBSS',
-    // 10-step mirrors
-    'BBSSSSSSBB', 'SSBBBBBBSS', 'BBBSSSSBBB', 'SSSBBBBSSS', 'BBSSBBSSBB', 'SSBBSSBBSS',
-    'BSBSBSBSBS', 'SBSBSBSBSB', 'BSSSSSSSSB', 'SBBBBBBBBS', 'BBBBBSSSSS', 'SSSSSBBBBB',
-    // 12-step & Long Mirrors
-    'SSSSBBBBSSSS', 'BBBBSSSSBBBB', 'BBSSBBSSBBSS', 'SSBBSSBBSSBB',
-    'BBBSSSBBBSSS', 'SSSBBBSSSBBB', 'BBBBSSBBBB', 'SSSSBBSSSS',
-    'BBSSSBBSSS', 'SSBBBSSBBB', 'BBBBBBSSSSSS', 'SSSSSSBBBBBB',
-    'BBBBBSSSSSBBBBB', 'SSSSSBBBBBSSSSS'
+    'BBSSBB', 'SSBSSB', 'SSSBSSS', 'BBBSSSBBB', 'SSSBBSSS',
+    'SSSSBBBBSSSS', 'BBBBSSSSBBBB', 'BSSB', 'SBBS', 'BBSB',
+    'SBSS', 'BBSSBBSS', 'SSBBSSBB', 'BSSBSSB', 'SBBSBBS'
   ];
   mirrors.forEach((m) => {
-    // If mirror ends with B, continuation in symmetry is either S (flipping) or continuation
-    const lastChar = m.slice(-1);
-    const expected = lastChar === 'B' ? 'SMALL' : 'BIG';
-    const conf = Math.min(98, 70 + Math.floor(m.length * 1.8));
-    add({ key: m, call: expected, conf, type: 'mirror', len: m.length });
+    add({ key: m, call: m.slice(-1) === 'B' ? 'SMALL' : 'BIG', conf: 62, type: 'mirror', len: m.length });
   });
 
-  // Block 2-2 (Extended)
-  const b22 = [
-    'BBSS', 'SSBB', 'BBSSBB', 'SSBBSS', 'BBSSBBSS', 'SSBBSSBB',
-    'BBSSBBSSBB', 'SSBBSSBBSS', 'BBSSBBSSBBSS', 'SSBBSSBBSSBB'
-  ];
-  b22.forEach((k) => add({ key: k, call: k.slice(-1) === 'B' ? 'SMALL' : 'BIG', conf: 68, type: 'block22', len: k.length }));
+  // Block 2-2
+  const b22 = ['BBSS', 'SSBB', 'BBSSBB', 'SSBBSS', 'BBSSBBSS', 'SSBBSSBB', 'BBSSBBSSBB', 'SSBBSSBBSS'];
+  b22.forEach((k) => add({ key: k, call: k.slice(-1) === 'B' ? 'SMALL' : 'BIG', conf: 60, type: 'block22', len: k.length }));
 
-  // Block 3-3 (Extended)
-  const b33 = [
-    'BBBSSS', 'SSSBBB', 'BBBSSSBBB', 'SSSBBBSSS',
-    'BBBSSSBBBSSS', 'SSSBBBSSSBBB', 'BBBSSSBBBSSSBBB', 'SSSBBBSSSBBBSSS'
-  ];
-  b33.forEach((k) => add({ key: k, call: k.slice(-1) === 'B' ? 'SMALL' : 'BIG', conf: 72, type: 'block33', len: k.length }));
+  // Block 3-3
+  const b33 = ['BBBSSS', 'SSSBBB', 'BBBSSSBBB', 'SSSBBBSSS', 'BBBSSSBBBSSS', 'SSSBBBSSSBBB'];
+  b33.forEach((k) => add({ key: k, call: k.slice(-1) === 'B' ? 'SMALL' : 'BIG', conf: 60, type: 'block33', len: k.length }));
 
-  // Block 1-2 & 2-1 (Extended)
-  const b12 = ['BSS', 'SBB', 'BSSBSS', 'SBBSBB', 'BSSBSSB', 'SBBSBBS', 'BSSBSSBSS', 'SBBSBBSBB', 'BBS', 'SSB', 'BBSBBS', 'SSBSSB'];
-  b12.forEach((k) => add({ key: k, call: k.slice(-1) === 'B' ? 'SMALL' : 'BIG', conf: 66, type: 'block12', len: k.length }));
+  // Block 1-2
+  const b12 = ['BSS', 'SBB', 'BSSBSS', 'SBBSBB', 'BSSBSSB', 'SBBSBBS'];
+  b12.forEach((k) => add({ key: k, call: k.slice(-1) === 'B' ? 'SMALL' : 'BIG', conf: 58, type: 'block12', len: k.length }));
 
-  // Block 3-1 & 1-3 (Extended)
-  const b31 = ['BBBS', 'SSSB', 'BBBSBBB', 'SSSBSSS', 'BBBSBBBS', 'SSSBSSSB', 'BSSS', 'SBBB', 'BSSSBSSS', 'SBBBSBBB'];
-  b31.forEach((k) => add({ key: k, call: k.slice(-1) === 'B' ? 'SMALL' : 'BIG', conf: 68, type: 'block31', len: k.length }));
-
-  // Block 4-4 (Long Dragon Blocks)
-  const b44 = ['BBBBSSSS', 'SSSSBBBB', 'BBBBSSSSBBBB', 'SSSSBBBBSSSS'];
-  b44.forEach((k) => add({ key: k, call: k.slice(-1) === 'B' ? 'SMALL' : 'BIG', conf: 76, type: 'block44', len: k.length }));
+  // Block 3-1
+  const b31 = ['BBBS', 'SSSB', 'BBBSBBB', 'SSSBSSS', 'BBBSBBBS', 'SSSBSSSB'];
+  b31.forEach((k) => add({ key: k, call: k.slice(-1) === 'B' ? 'SMALL' : 'BIG', conf: 58, type: 'block31', len: k.length }));
 
   return combos;
-}
-
-/**
- * Dynamic Mirror and Reflection Analyzer
- * Checks for palindrome reflections (e.g. B S S B) and inverted mirrors (e.g. B B S S S S B B)
- */
-export function analyzeDynamicMirror(seq: string): {
-  isMirror: boolean;
-  call: 'BIG' | 'SMALL';
-  conf: number;
-  patternName: string;
-} | null {
-  if (!seq || seq.length < 4) return null;
-
-  // 1. Check direct Palindrome / Symmetry (e.g. B S S B, B B S S B B)
-  for (let len = Math.min(seq.length, 12); len >= 4; len--) {
-    const sub = seq.slice(-len);
-    const rev = sub.split('').reverse().join('');
-    if (sub === rev) {
-      // Symmetrical palindrome detected! Next step flips to resolve symmetry
-      const call = sub[sub.length - 1] === 'B' ? 'SMALL' : 'BIG';
-      return {
-        isMirror: true,
-        call,
-        conf: Math.min(97, 82 + len * 1.5),
-        patternName: `PERFECT SYMMETRY (${sub})`
-      };
-    }
-  }
-
-  // 2. Check Half-Mirror in progress (e.g. BBSSSS and needs BB to complete BBSSSSBB)
-  for (let half = 2; half <= 5; half++) {
-    const leftSide = seq.slice(-half * 2, -half);
-    const rightSide = seq.slice(-half);
-    if (leftSide.length === half && rightSide.length === half) {
-      // Inverted reflection: BB then SS
-      const oppLeft = leftSide.split('').map((c) => (c === 'B' ? 'S' : 'B')).join('');
-      if (rightSide === oppLeft) {
-        // e.g. BB -> SS, then next expected is BB (returning to left)
-        const call = leftSide[0] === 'B' ? 'BIG' : 'SMALL';
-        return {
-          isMirror: true,
-          call,
-          conf: Math.min(95, 84 + half * 2),
-          patternName: `REFLECTIVE ECHO (${leftSide}|${rightSide})`
-        };
-      }
-    }
-  }
-
-  return null;
 }
 
 export const PATTERN_COMBOS = buildPatternDatabase();
