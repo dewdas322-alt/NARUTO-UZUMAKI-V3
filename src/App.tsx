@@ -12,21 +12,14 @@ import { WingoGateModal } from './components/WingoGateModal';
 import { BottomNavBar, TabType } from './components/BottomNavBar';
 import { EngineAnalysisView } from './components/EngineAnalysisView';
 import { InAppWebView } from './components/InAppWebView';
-import { AuthUser, getStoredOrAutoAdminUser } from './utils/authDatabase';
 
 export default function App() {
-  // Automatic background verification for Admin ID (655675576694)
-  const [authUser] = useState<AuthUser>(() => getStoredOrAutoAdminUser());
-
-  // CRITICAL REQUIREMENT: Must NOT give prediction directly on boot/reopen/restart!
-  // User MUST choose/confirm WINGO game mode first!
+  // Gate state: Starts strictly from 0 on every open, reopen, or restart!
   const [hasChosenGame, setHasChosenGame] = useState<boolean>(false);
   const [selectedGame, setSelectedGame] = useState<GameType>('WINGO_1M');
-
-  // Active navigation tab
   const [currentTab, setCurrentTab] = useState<TabType>('predict');
 
-  // Prediction and live API state (clean start with 0 data)
+  // Fresh clean state: zero previous data
   const [issues, setIssues] = useState<LotteryIssue[]>([]);
   const [prediction, setPrediction] = useState<PredictionData | null>(null);
   const [history, setHistory] = useState<HistoryRecord[]>([]);
@@ -51,8 +44,15 @@ export default function App() {
   const winCountRef = useRef<number>(0);
   const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Auto-wipe history & reset to WINGO choice gate on reopen, restart or browser back navigation
+  // Auto-wipe everything on restart, reopen, or back navigation
   useEffect(() => {
+    // 1. Wipe browser storage on boot so old data never persists
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch {}
+
+    // 2. Browser Back Navigation Handler -> Auto-wipes history back to 0
     const handlePopState = () => {
       setHistory([]);
       setWinCount(0);
@@ -61,11 +61,28 @@ export default function App() {
       lastProcessedIssueRef.current = null;
       currentPredictionRef.current = null;
       setHasChosenGame(false);
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch {}
+    };
+
+    // 3. Page exit/unload handler -> Purges cache on exit
+    const handlePageExit = () => {
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch {}
     };
 
     window.addEventListener('popstate', handlePopState);
+    window.addEventListener('pagehide', handlePageExit);
+    window.addEventListener('beforeunload', handlePageExit);
+
     return () => {
       window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('pagehide', handlePageExit);
+      window.removeEventListener('beforeunload', handlePageExit);
     };
   }, []);
 
@@ -84,7 +101,7 @@ export default function App() {
 
   const currentGame = GAMES.find((g) => g.id === selectedGame) || GAMES[0];
 
-  // Fetch and update prediction logic — 100% LIVE API SYNC, ONLY runs after WINGO is chosen!
+  // Fetch and update prediction logic — 100% LIVE API SYNC, starts strictly from 0
   const syncLiveData = useCallback(async () => {
     if (!hasChosenGame) return;
     setIsLoading(true);
@@ -112,7 +129,7 @@ export default function App() {
           const prevPred = currentPredictionRef.current;
           if (prevPred && prevIssueId) {
             const isSizeWin = prevPred.predictedSize === actualSize;
-            const isJackpot = prevPred.predictedNum === num;
+            const isJackpot = prevPred.predictedNum === num || prevPred.backupNum === num;
             const isWin = isSizeWin || isJackpot;
 
             if (isWin) {
@@ -133,6 +150,7 @@ export default function App() {
               actualSize,
               predictedSize: prevPred.predictedSize,
               predictedNum: prevPred.predictedNum,
+              backupNum: prevPred.backupNum,
               isWin,
               isJackpot,
               jackpotNum: isJackpot ? num : undefined,
@@ -147,14 +165,14 @@ export default function App() {
             setHistory((prev) => [newRec, ...prev.filter((r) => r.fullPeriod !== latestIssue.issueNumber)]);
           }
 
-          // Generate next prediction using supercharged multi-engine AI fusion
+          // Generate next prediction using 5-engine AI fusion (Dragon, Mirror, Zigzag, Random Adaptive)
           const nextPred = calculatePrediction(res.list, selectedGame, currentLevelRef.current);
           if (nextPred) {
             setPrediction(nextPred);
             soundManager.playChakraTone(560, 0.2);
           }
         } else if (!currentPredictionRef.current) {
-          // If prediction was not yet generated (initial activation), generate immediately!
+          // If prediction was not yet generated (e.g. initial boot), generate immediately!
           lastProcessedIssueRef.current = latestIssue.issueNumber;
           const initialPred = calculatePrediction(res.list, selectedGame, currentLevelRef.current);
           if (initialPred) {
@@ -164,12 +182,10 @@ export default function App() {
       }
     } catch {
       setIsOnline(false);
-      // Auto-retry in 1.5s
+      // Auto-retry in 1.5s so prediction never halts or freezes
       if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
       retryTimeoutRef.current = setTimeout(() => {
-        if (hasChosenGame) {
-          syncLiveData();
-        }
+        syncLiveData();
       }, 1500);
     } finally {
       setIsLoading(false);
@@ -197,7 +213,24 @@ export default function App() {
     }
   };
 
-  // Confirm Initial WINGO Choice -> Activates Prediction
+  // Back Button / Change Game Handler with Instant Auto-History Delete
+  const handleBackAndClearSession = () => {
+    soundManager.playTick();
+    setHistory([]);
+    setWinCount(0);
+    setCurrentLevel(0);
+    setPrediction(null);
+    lastProcessedIssueRef.current = null;
+    currentPredictionRef.current = null;
+    setHasChosenGame(false);
+    setCurrentPage(1);
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch {}
+  };
+
+  // Handle Game choice confirmation from initial gate
   const handleConfirmInitialWingo = (gameId: GameType) => {
     setSelectedGame(gameId);
     setHasChosenGame(true);
@@ -211,20 +244,7 @@ export default function App() {
     setHasMore(true);
   };
 
-  // Change Game / Reset session back to WINGO selection gate
-  const handleChangeGameAndReset = () => {
-    soundManager.playTick();
-    setHistory([]);
-    setWinCount(0);
-    setCurrentLevel(0);
-    setPrediction(null);
-    lastProcessedIssueRef.current = null;
-    currentPredictionRef.current = null;
-    setHasChosenGame(false);
-    setCurrentPage(1);
-  };
-
-  // Select game via top tabs (when game is already active)
+  // Handle Game switch with auto history flush
   const handleSelectGame = (gameId: GameType) => {
     setSelectedGame(gameId);
     setPrediction(null);
@@ -248,7 +268,7 @@ export default function App() {
     }
   };
 
-  // Continuous Clock countdown timer effect — ONLY RUNS WHEN WINGO HAS BEEN CHOSEN!
+  // Continuous Clock countdown timer effect
   useEffect(() => {
     if (!hasChosenGame) return;
 
@@ -270,7 +290,7 @@ export default function App() {
 
       setRemainingSeconds(rem);
 
-      if (rem <= 5 && rem > 0 && soundEnabled && currentTab === 'predict') {
+      if (rem <= 5 && rem > 0 && soundEnabled) {
         soundManager.playTick();
       }
 
@@ -283,9 +303,9 @@ export default function App() {
     updateCountdown();
     const interval = setInterval(updateCountdown, 1000);
     return () => clearInterval(interval);
-  }, [hasChosenGame, currentGame.durationSec, soundEnabled, syncLiveData, currentTab]);
+  }, [hasChosenGame, currentGame.durationSec, soundEnabled, syncLiveData]);
 
-  // Continuous background polling loop — ONLY RUNS WHEN WINGO HAS BEEN CHOSEN!
+  // Continuous background polling loop — runs uninterruptedly
   useEffect(() => {
     if (!hasChosenGame) return;
 
@@ -301,7 +321,7 @@ export default function App() {
   }, [hasChosenGame, syncLiveData]);
 
   return (
-    <div className="min-h-screen bg-[#070b16] text-gray-200 flex flex-col font-rajdhani antialiased pb-20 selection:bg-[#ff6b00]/30 selection:text-white">
+    <div className="min-h-screen bg-[#070b16] text-gray-200 flex flex-col font-rajdhani antialiased pb-20 selection:bg-[#10b981]/30 selection:text-white">
       {/* Top Header */}
       <Header
         latencyMs={latencyMs}
@@ -309,18 +329,11 @@ export default function App() {
         soundEnabled={soundEnabled}
         onToggleSound={handleToggleSound}
         onOpenInspector={() => setShowInspector(true)}
-        authUser={authUser}
       />
 
       {/* Main Content Area */}
-      <main
-        className={`flex-1 w-full mx-auto flex flex-col transition-all ${
-          currentTab === 'webpage'
-            ? 'max-w-2xl p-1 sm:p-2 flex-1 h-full'
-            : 'max-w-md p-3 sm:p-4 gap-3.5'
-        }`}
-      >
-        {/* Game Mode Selector Strip (Active when Wingo is chosen and not on webpage tab) */}
+      <main className="flex-1 max-w-md w-full mx-auto p-3 sm:p-4 flex flex-col gap-3.5">
+        {/* Game Mode Selector Strip (hidden in embedded webpage tab) */}
         {hasChosenGame && currentTab !== 'webpage' && (
           <GameSelector
             selectedGame={selectedGame}
@@ -328,7 +341,7 @@ export default function App() {
           />
         )}
 
-        {/* Tab 1: Predict (Active after Wingo is chosen) */}
+        {/* Tab 1: Predict (Exact Match to Screenshot IMG_20261001_164834_632.jpg) */}
         {currentTab === 'predict' && (
           <>
             {/* Top Glowing Prediction Card with 3D Flip Entry & Mobile Vibration */}
@@ -340,7 +353,7 @@ export default function App() {
               isLoading={isLoading}
               onRefresh={syncLiveData}
               winCount={winCount}
-              onChangeGame={handleChangeGameAndReset}
+              onChangeGame={handleBackAndClearSession}
             />
 
             {/* Verification & Accuracy History Table with Auto-Wipe and Unlimited Scrolling */}
@@ -356,7 +369,7 @@ export default function App() {
           </>
         )}
 
-        {/* Tab 2: AI Engines Breakdown (All Supercharged Engines) */}
+        {/* Tab 2: AI Engines Breakdown (Dragon, Mirror, Zigzag, Block, Random) */}
         {currentTab === 'engines' && (
           <EngineAnalysisView
             prediction={prediction}
@@ -365,25 +378,21 @@ export default function App() {
           />
         )}
 
-        {/* Tab 3: PERSISTENT In-App Game Web View (Loads ONCE, top live prediction ticker active) */}
-        <div className={`w-full flex-1 h-full ${currentTab === 'webpage' ? 'flex flex-col' : 'hidden'}`}>
+        {/* Tab 3: Direct In-App Game Web View (Opens directly in-app, no external browser) */}
+        {currentTab === 'webpage' && (
           <InAppWebView
             onBackToPredict={() => setCurrentTab('predict')}
-            prediction={prediction}
-            history={history}
-            isVerified={hasChosenGame}
           />
-        </div>
+        )}
       </main>
 
-      {/* Bottom Navigation Bar */}
+      {/* Bottom Navigation Bar (Webpage | Hack / Predict | AI Engines) */}
       <BottomNavBar
         currentTab={currentTab}
         onSelectTab={(tab) => setCurrentTab(tab)}
-        isVerified={true}
       />
 
-      {/* SPECIFICATION: MANDATORY INITIAL WINGO CHOICE GATE (Must choose WINGO before prediction starts) */}
+      {/* Initial Wingo Choice Gate Modal (Bypasses License Key, Forces Wingo Selection First) */}
       <WingoGateModal
         isOpen={!hasChosenGame}
         selectedGame={selectedGame}
