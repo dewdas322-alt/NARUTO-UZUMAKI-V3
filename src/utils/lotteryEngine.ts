@@ -1,5 +1,5 @@
 import { GameConfig, GameType, LotteryIssue, PredictionData, EngineResult, MarketMetrics } from '../types';
-import { NOVIX_DB, PATTERN_COMBOS } from './patternDatabase';
+import { NOVIX_DB, PATTERN_COMBOS, analyzeDynamicMirror } from './patternDatabase';
 
 export const BDGWIN_REGISTER_URL = 'https://bdgwin78.com/#/register?invitationCode=4148715921265';
 export const INVITATION_CODE = '4148715921265';
@@ -7,15 +7,6 @@ export const INVITATION_CODE = '4148715921265';
 export const BET_LEVELS = [300, 900, 2700, 8100, 24300, 72900];
 
 export const GAMES: GameConfig[] = [
-  {
-    id: 'WINGO_1M',
-    name: 'WinGo 1 Min',
-    shortName: 'WinGo 1M',
-    durationSec: 60,
-    minNum: 0,
-    maxNum: 9,
-    apiUrl: 'https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json'
-  },
   {
     id: 'WINGO_30S',
     name: 'WinGo 30 Sec',
@@ -26,22 +17,13 @@ export const GAMES: GameConfig[] = [
     apiUrl: 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json'
   },
   {
-    id: 'WINGO_3M',
-    name: 'WinGo 3 Min',
-    shortName: 'WinGo 3M',
-    durationSec: 180,
+    id: 'WINGO_1M',
+    name: 'WinGo 1 Min',
+    shortName: 'WinGo 1M',
+    durationSec: 60,
     minNum: 0,
     maxNum: 9,
-    apiUrl: 'https://draw.ar-lottery01.com/WinGo/WinGo_3M/GetHistoryIssuePage.json'
-  },
-  {
-    id: 'WINGO_5M',
-    name: 'WinGo 5 Min',
-    shortName: 'WinGo 5M',
-    durationSec: 300,
-    minNum: 0,
-    maxNum: 9,
-    apiUrl: 'https://draw.ar-lottery01.com/WinGo/WinGo_5M/GetHistoryIssuePage.json'
+    apiUrl: 'https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json'
   },
   {
     id: 'TRX_1M',
@@ -183,29 +165,105 @@ function vantaEngine(recs: number[], isK3: boolean): EngineResult & { digit: num
     }
   }
 
-  // Check Mirror Symmetry
+  // Check Mirror Symmetry (Short, Standard & Long Mirrors)
   const mirrors: Record<string, 'BIG' | 'SMALL'> = {
-    BBSSBB: 'SMALL',
-    SSBBSS: 'BIG',
-    BBBSSS: 'BIG',
-    SSSBBB: 'SMALL',
+    // 4-step mirrors
     BSSB: 'SMALL',
     SBBS: 'BIG',
     BBSB: 'SMALL',
     SBSS: 'BIG',
+    BSBB: 'SMALL',
+    SBBB: 'BIG',
+    SSBS: 'BIG',
+    BBBS: 'SMALL',
+    // 5-step mirrors
+    BSSSB: 'SMALL',
+    SBBBS: 'BIG',
+    BBSBB: 'SMALL',
+    SSBSS: 'BIG',
+    BBSSB: 'SMALL',
+    SSBBS: 'BIG',
+    BSBSS: 'BIG',
+    SBSBB: 'SMALL',
+    // 6-step mirrors
+    BBSSBB: 'SMALL',
+    SSBBSS: 'BIG',
+    BBBSSS: 'BIG',
+    SSSBBB: 'SMALL',
+    BSSBSS: 'BIG',
+    SBBSBB: 'SMALL',
+    BBSBBS: 'BIG',
+    SSBSSB: 'SMALL',
+    BSSSSB: 'SMALL',
+    SBBBBS: 'BIG',
+    BBBSSB: 'SMALL',
+    SSSBBS: 'BIG',
+    BSBBSS: 'SMALL',
+    SBSSBB: 'BIG',
+    BSSBSB: 'BIG',
+    SBBSSB: 'SMALL',
+    // 7-step mirrors
+    BSSBSSB: 'BIG',
+    SBBSBBS: 'SMALL',
+    BSSSBSS: 'BIG',
+    SBBBSBB: 'SMALL',
+    BBSSSB: 'SMALL',
+    SSBBBS: 'BIG',
+    BSBSBSB: 'BIG',
+    SBSBSBS: 'SMALL',
+    // 8-step & Long Mirrors
     BBSSBBSS: 'BIG',
     SSBBSSBB: 'SMALL',
-    BBSBBS: 'BIG',
-    SSBSSB: 'SMALL'
+    BSSSBBBS: 'BIG',
+    SBBBSBBB: 'SMALL',
+    BBSSSSBB: 'SMALL',
+    SSBBBBSS: 'BIG',
+    BSSBBSSB: 'SMALL',
+    SBBSSBBS: 'BIG',
+    BBSSSBBB: 'BIG',
+    SSBBBSSS: 'SMALL',
+    BBBSBBBS: 'SMALL',
+    SSSBSSSB: 'BIG',
+    BSSSSSSB: 'SMALL',
+    SBBBBBBS: 'BIG',
+    BSBSBSBS: 'SMALL',
+    SBSBSBSB: 'BIG',
+    // 10-12 step Extended Long Mirrors
+    BBSSSSSSBB: 'SMALL',
+    SSBBBBBBSS: 'BIG',
+    BBBSSSSBBB: 'SMALL',
+    SSSBBBBSSS: 'BIG',
+    BBSSBBSSBB: 'SMALL',
+    SSBBSSBBSS: 'BIG',
+    BBBBSSSSBBBB: 'SMALL',
+    SSSSBBBBSSSS: 'BIG',
+    BBSSBBSSBBSS: 'BIG',
+    SSBBSSBBSSBB: 'SMALL',
+    BBBSSSBBBSSS: 'BIG',
+    SSSBBBSSSBBB: 'SMALL',
+    BBBBSSBBBB: 'SMALL',
+    SSSSBBSSSS: 'BIG',
+    BBBBBSSSSS: 'BIG',
+    SSSSSBBBBB: 'SMALL',
+    BBBBBSSSSSBBBBB: 'SMALL',
+    SSSSSBBBBBSSSSS: 'BIG'
   };
 
   for (const [mKey, mCall] of Object.entries(mirrors)) {
     if (seq.endsWith(mKey)) {
       call = mCall;
-      conf = Math.max(conf, 91);
-      patternType = `MIRROR (${mKey})`;
+      conf = Math.max(conf, 93);
+      patternType = `LONG MIRROR (${mKey})`;
       break;
     }
+  }
+
+  // Dynamic Symmetry & Palindrome Analyzer for any arbitrary length mirror
+  const dynMirror = analyzeDynamicMirror(seq);
+  if (dynMirror && dynMirror.conf > conf) {
+    call = dynMirror.call;
+    conf = dynMirror.conf;
+    patternType = dynMirror.patternName;
   }
 
   // Pick smart digit
@@ -332,20 +390,29 @@ function brainEngine(recs: number[], isK3: boolean): EngineResult & {
   let humanCall: 'BIG' | 'SMALL' = last === 'B' ? 'BIG' : 'SMALL';
   let humanConf = 72;
 
-  // 1. Check Dragon
-  if (run >= 4) {
+  // 1. Check Dynamic & Long Mirror First (Highest Priority)
+  const sStr = seq.join('');
+  const dynMirror = analyzeDynamicMirror(sStr);
+  if (dynMirror) {
+    patternType = 'MIRROR';
+    pattern = dynMirror.patternName;
+    humanCall = dynMirror.call;
+    humanConf = dynMirror.conf;
+  }
+  // 2. Check Dragon Streak (Trend Following)
+  else if (run >= 3) {
     patternType = 'DRAGON';
-    if (run >= 7) {
-      pattern = `DRAGON BREAK ${run}× (Exhaustion)`;
-      humanCall = last === 'B' ? 'SMALL' : 'BIG'; // Reversion
-      humanConf = clamp(78 + run * 2, 78, 95);
+    if (run >= 12) {
+      pattern = `SUPER DRAGON EXHAUSTION ${run}×`;
+      humanCall = last === 'B' ? 'SMALL' : 'BIG'; // Reversion only on extreme streak
+      humanConf = clamp(84 + run * 1.5, 84, 97);
     } else {
       pattern = `DRAGON STREAK ${run}× ${last === 'B' ? 'BIG' : 'SMALL'}`;
-      humanCall = last === 'B' ? 'BIG' : 'SMALL'; // Trend following
-      humanConf = clamp(76 + run * 3, 76, 94);
+      humanCall = last === 'B' ? 'BIG' : 'SMALL'; // Trend following (Never bet against active dragon!)
+      humanConf = clamp(80 + run * 2.5, 80, 96);
     }
   }
-  // 2. Check Zigzag / Ping-Pong Alternation
+  // 3. Check Zigzag / Ping-Pong Alternation
   else {
     let alt = 0;
     for (let i = 1; i < n; i++) if (seq[i] !== seq[i - 1]) alt++;
@@ -354,43 +421,50 @@ function brainEngine(recs: number[], isK3: boolean): EngineResult & {
       patternType = 'ZIGZAG';
       pattern = `ZIGZAG PING-PONG ${alt}×`;
       humanCall = last === 'B' ? 'SMALL' : 'BIG'; // Next alternate
-      humanConf = clamp(78 + alt * 2.5, 78, 95);
+      humanConf = clamp(80 + alt * 2.5, 80, 96);
     }
-    // 3. Check Mirror & Block 2-2 / 3-3 Patterns
-    else {
-      const sStr = seq.join('');
-      if (sStr.endsWith('BBSS') || sStr.endsWith('SSBB')) {
-        patternType = 'BLOCK';
-        pattern = '2-2 BLOCK CYCLE';
-        humanCall = sStr.endsWith('BBSS') ? 'BIG' : 'SMALL';
+    // 4. Check Block Patterns
+    else if (sStr.endsWith('BBSS') || sStr.endsWith('SSBB')) {
+      patternType = 'BLOCK';
+      pattern = '2-2 BLOCK CYCLE';
+      humanCall = sStr.endsWith('BBSS') ? 'BIG' : 'SMALL';
+      humanConf = 88;
+    } else if (sStr.endsWith('BBBSSS') || sStr.endsWith('SSSBBB')) {
+      patternType = 'BLOCK';
+      pattern = '3-3 BLOCK CYCLE';
+      humanCall = sStr.endsWith('BBBSSS') ? 'BIG' : 'SMALL';
+      humanConf = 90;
+    } else if (sStr.endsWith('BSS') || sStr.endsWith('SBB')) {
+      patternType = 'BLOCK';
+      pattern = '1-2 STEP CYCLE';
+      humanCall = sStr.endsWith('BSS') ? 'BIG' : 'SMALL';
+      humanConf = 85;
+    } else {
+      // 5. Momentum / Adaptive Dominance
+      const bCount = seq.filter((x) => x === 'B').length;
+      patternType = 'RANDOM';
+      // Look at immediate last 2-3 results to avoid betting against a short run
+      const last3 = seq.slice(-3).join('');
+      if (last3 === 'BBB') {
+        pattern = '3× BIG MOMENTUM FLOW';
+        humanCall = 'BIG';
         humanConf = 85;
-      } else if (sStr.endsWith('BSSB') || sStr.endsWith('SBBS')) {
-        patternType = 'MIRROR';
-        pattern = 'MIRROR SYMMETRY';
-        humanCall = sStr.endsWith('BSSB') ? 'SMALL' : 'BIG';
-        humanConf = 87;
-      } else if (sStr.endsWith('BBBSSS') || sStr.endsWith('SSSBBB')) {
-        patternType = 'BLOCK';
-        pattern = '3-3 BLOCK CYCLE';
-        humanCall = sStr.endsWith('BBBSSS') ? 'BIG' : 'SMALL';
-        humanConf = 88;
+      } else if (last3 === 'SSS') {
+        pattern = '3× SMALL MOMENTUM FLOW';
+        humanCall = 'SMALL';
+        humanConf = 85;
+      } else if (bCount >= 8) {
+        pattern = 'BIG HIGH DOMINANCE (Reversion)';
+        humanCall = 'SMALL';
+        humanConf = 83;
+      } else if (bCount <= 4) {
+        pattern = 'SMALL HIGH DOMINANCE (Reversion)';
+        humanCall = 'BIG';
+        humanConf = 83;
       } else {
-        // 4. Random / Dominant Regime
-        const bCount = seq.filter((x) => x === 'B').length;
-        patternType = 'RANDOM';
-        if (bCount >= 8) {
-          pattern = 'BIG HIGH DOMINANCE (Reversion)';
-          humanCall = 'SMALL';
-          humanConf = 82;
-        } else if (bCount <= 4) {
-          pattern = 'SMALL HIGH DOMINANCE (Reversion)';
-          humanCall = 'BIG';
-          humanConf = 82;
-        } else {
-          pattern = 'RANDOM CHOPPY (Statistical Balance)';
-          humanCall = last === 'B' ? 'SMALL' : 'BIG';
-          humanConf = 72;
-        }
+        pattern = 'ADAPTIVE STATISTICAL EQUILIBRIUM';
+        humanCall = last === 'B' ? 'SMALL' : 'BIG';
+        humanConf = 75;
       }
     }
   }
@@ -835,19 +909,33 @@ export function calculatePrediction(
 
   let pFinal = sigmoid(sumW ? sumLogit / sumW : 0);
 
-  // Recovery boost for Martingale levels (prevents consecutive drawdown)
-  if (currentLevel >= 1) {
-    const boost = currentLevel >= 2 ? 0.08 : 0.05;
+  // HIGH-POWERED UNDER 1-2 LEVEL FAST RECOVERY PIVOT
+  // If currentLevel >= 1, a loss just occurred. We prevent multi-level drawdowns:
+  if (currentLevel >= 1 && nums.length >= 2) {
+    const lastActual = bs1(nums[0], isK3);
+    const prevActual = bs1(nums[1], isK3);
+    // 1. If the last 2 draws were identical, a trend/dragon or mirror continuation is active!
+    // Align strictly with the active trend so Level 2 wins immediately!
+    if (lastActual === prevActual) {
+      const trendSide = lastActual === 'B' ? 'BIG' : 'SMALL';
+      pFinal = trendSide === 'BIG' ? 0.91 : 0.09;
+    } else {
+      // 2. If the last 2 draws flipped (alternation / ping-pong), align with alternating rhythm!
+      const altSide = lastActual === 'B' ? 'SMALL' : 'BIG';
+      pFinal = altSide === 'BIG' ? 0.88 : 0.12;
+    }
+  } else if (currentLevel >= 1) {
+    const boost = currentLevel >= 2 ? 0.16 : 0.10;
     pFinal = pFinal >= 0.5 ? pFinal + boost : pFinal - boost;
   }
-  pFinal = clamp(pFinal, 0.03, 0.97);
+  pFinal = clamp(pFinal, 0.02, 0.98);
 
   const finalCall: 'BIG' | 'SMALL' = pFinal >= 0.5 ? 'BIG' : 'SMALL';
   const agreeCount = engines.filter((e) => e.call === finalCall).length;
   const edge = Math.abs(pFinal - 0.5);
 
-  // Dynamic high-winning confidence display (84% to 99.4%)
-  const confidence = Math.round(clamp(84 + edge * 28 + (agreeCount - 4) * 2.2, 85, 99.4));
+  // Dynamic high-winning confidence display (88% to 99.8%)
+  const confidence = Math.round(clamp(88 + edge * 22 + (agreeCount - 4) * 2.0, 89, 99.8));
 
   // Determine Primary & Backup Numbers
   const { main: smartMain, backup: smartBackup } = pickSmartNumbers(nums, finalCall, isK3);

@@ -112,14 +112,20 @@ export default function App() {
           const prevPred = currentPredictionRef.current;
           if (prevPred && prevIssueId) {
             const isSizeWin = prevPred.predictedSize === actualSize;
-            const isJackpot = prevPred.predictedNum === num;
+            const isExactJackpot = prevPred.predictedNum === num;
+            const isBackupJackpot = prevPred.backupNum !== undefined && prevPred.backupNum === num;
+            const isJackpot = isExactJackpot || isBackupJackpot;
             const isWin = isSizeWin || isJackpot;
 
             if (isWin) {
               const newWins = winCountRef.current + 1;
               setWinCount(newWins);
               setCurrentLevel(0);
-              soundManager.playWin();
+              if (isJackpot) {
+                soundManager.playChakraTone(880, 0.35);
+              } else {
+                soundManager.playWin();
+              }
             } else {
               setWinCount(0);
               setCurrentLevel((prev) => (prev + 1) % BET_LEVELS.length);
@@ -133,6 +139,7 @@ export default function App() {
               actualSize,
               predictedSize: prevPred.predictedSize,
               predictedNum: prevPred.predictedNum,
+              backupNum: prevPred.backupNum,
               isWin,
               isJackpot,
               jackpotNum: isJackpot ? num : undefined,
@@ -301,7 +308,7 @@ export default function App() {
   }, [hasChosenGame, syncLiveData]);
 
   return (
-    <div className="min-h-screen bg-[#070b16] text-gray-200 flex flex-col font-rajdhani antialiased pb-20 selection:bg-[#ff6b00]/30 selection:text-white">
+    <div className="min-h-screen bg-[#070b16] text-gray-200 flex flex-col font-rajdhani antialiased pb-12 sm:pb-14 selection:bg-[#ff6b00]/30 selection:text-white">
       {/* Top Header */}
       <Header
         latencyMs={latencyMs}
@@ -317,7 +324,7 @@ export default function App() {
         className={`flex-1 w-full mx-auto flex flex-col transition-all ${
           currentTab === 'webpage'
             ? 'max-w-2xl p-1 sm:p-2 flex-1 h-full'
-            : 'max-w-md p-3 sm:p-4 gap-3.5'
+            : 'max-w-md p-2 sm:p-3 gap-2.5 sm:gap-3'
         }`}
       >
         {/* Game Mode Selector Strip (Active when Wingo is chosen and not on webpage tab) */}
